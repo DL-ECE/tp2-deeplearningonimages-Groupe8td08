@@ -606,6 +606,7 @@ if __name__ == "__main__" :
 
 """Display the 10 image from train set and 10 images from validation set, print their ground truth"""
 
+if __name_== "__main__":
 def display_10_images(dataset):
     # YOUR CODE HERE 
     for i in range(0,9):
@@ -662,7 +663,7 @@ class CNNModel(nn.Module):
         super().__init__()
         # YOUR CODE HERE 
         
-        self.conv1 = torch.nn.Conv2d(1,255,kernel_size=3,padding = 1)
+        self.conv1 = torch.nn.Conv2d(1,255,kernel_size=3,padding = 2)
         self.conv2 = torch.nn.Conv2d(255,123,kernel_size=3,padding = 1)
         self.conv3 = torch.nn.Conv2d(123,60,kernel_size=3,padding = 1)
         self.conv4 = torch.nn.Conv2d(60,32,kernel_size=3,padding = 1)
@@ -752,9 +753,9 @@ if __name__ == "__main__":
     # Network Hyperparameters 
     # YOUR CODE HERE 
     minibatch_size = 25
-    nepoch = 10
-    learning_rate = 0.065
-    momentum = 0.2
+    nepoch = 8
+    learning_rate = 0.075
+    momentum = 0.002
 
 
     model = CNNModel()
@@ -782,6 +783,16 @@ Same as TP 1 please write a short description of your experiment
 Comme dans le tp1 le nombre de couches va jouer sur la capactié du réseau à performer. Toutefois on utilise le momentum à présent ce qui nous permet d'aller bcp plus loin dans l'optimisation du réseau.
 
 Avec les parametres  minibatch_size = 25    nepoch = 20    learning_rate = 0.069    momentum = 0.098  je me retrouve dans la recherche d'un local donc ce n'est pas ce que je veux.
+
+Avec, minibatch_size = 25,    nepoch = 8,    learning_rate = 0.075,    momentum = 0.002 , j'atteinds 0.84 d'accuracy. 
+Je vais essayer d'augmenter le learning rate et de diminuer le momentum et d'ajouter des epoch ou augmenter le minibatchsize.
+
+Qunad j'ajoute des layers l'accuracy n'augmente pas pour autant.
+
+Rien qu'en augmentant le minibatshsize, l'accuracy augmente dès le début, il faut maintenir cette évolution à présent
+
+
+Je garde mes parametres pour obtenir 0.84 d'accuracy et j'ai ajouté un padding de 2 sur la première convolution... Bon, je ne retrouve plus mes paramètres les plus optimisés mais voilà le résultat
 
 # BONUS 
 
