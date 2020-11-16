@@ -662,9 +662,10 @@ class CNNModel(nn.Module):
         super().__init__()
         # YOUR CODE HERE 
         
-        self.conv1 = torch.nn.Conv2d(1,16,kernel_size=3,padding = 1)
-        self.conv2 = torch.nn.Conv2d(16,64,kernel_size=3,padding = 1)
-        self.conv3 = torch.nn.Conv2d(64,32,kernel_size=3,padding = 1)
+        self.conv1 = torch.nn.Conv2d(1,255,kernel_size=3,padding = 1)
+        self.conv2 = torch.nn.Conv2d(255,123,kernel_size=3,padding = 1)
+        self.conv3 = torch.nn.Conv2d(123,60,kernel_size=3,padding = 1)
+        self.conv4 = torch.nn.Conv2d(60,32,kernel_size=3,padding = 1)
 
         self.maxpool1 =  nn.MaxPool2d(2,2)
 
@@ -674,28 +675,38 @@ class CNNModel(nn.Module):
         #self.layer2 = nn.Sequential(self.conv2,self.flaten,maxpool1)
         #self.layer3 = nn.Sequential(self.conv3,self.flaten,maxpool1)
 
-        self.fc1 = nn.Linear(64, 10)
-        self.fc2 = nn.Linear(10, 15)
-        self.fc3 = nn.Linear(15,10)
+        self.fc1 = nn.Linear(32*7*7, 60)
+        self.fc2 = nn.Linear(60, 32)
+        self.fc3 = nn.Linear(32,10)
 
-        self.last_activation = torch.nn.Softmax(dim=0)
-        
+        self.activation = torch.nn.ReLU()
+        self.last_activation = torch.nn.Softmax(dim=1)
 
 
     def forward(self, input):
       x = self.conv1(input)
+      
       y = self.conv2(x)
-      y = self.conv3(y)
-
       y = self.maxpool1(y)
+      #y=self.activation(y)
+
+      y = self.conv3(y)
+      #y=self.activation(y)
+      y = self.conv4(y)
+      #y=self.activation(y)
+      
+      y = self.maxpool1(y)
+      y=self.flaten(y)
+
       y = y.reshape(y.size(0),-1)
       
       y = self.fc1(y)
-      y= self.last_activation(y)
+      y=self.activation(y)
       y = self.fc2(y)
-      y= self.last_activation(y)
+      y=self.activation(y)
       y = self.fc3(y)
-      y= self.last_activation(y)
+      y= self.activation(y)
+      y=self.last_activation(y)
       return y
 
 def train_one_epoch(model, device, data_loader, optimizer):
@@ -728,7 +739,7 @@ def evaluation(model, device, data_loader):
         data, target = data.to(device), target.to(device)
         output = model(data)
         # YOUR CODE HERE 
-        eval_loss = F.cross_entropy(output,target)
+        eval_loss += F.cross_entropy(output,target).item()
         prediction = output.argmax(dim=1)
         correct += torch.sum(prediction.eq(target)).item()
     result = {'loss': eval_loss / len(data_loader.dataset),
@@ -740,18 +751,21 @@ if __name__ == "__main__":
     
     # Network Hyperparameters 
     # YOUR CODE HERE 
-    minibatch_size = 10
+    minibatch_size = 25
     nepoch = 10
-    learning_rate = 0.06
-    momentum = 0.09
+    learning_rate = 0.065
+    momentum = 0.2
 
 
     model = CNNModel()
     model.to(device)
 
     # YOUR CODE HERE 
-    optimizer = NotImplemented
-
+    optimizer = optim.SGD(model.parameters(),learning_rate,momentum)
+    fmnist_train = FashionMNIST(os.getcwd(), train=True, download=True, transform=transforms.ToTensor())
+    fmnist_train = DataLoader(fmnist_train, batch_size=32, num_workers=4, pin_memory=True)
+    fmnist_val = FashionMNIST(os.getcwd(), train=False, download=True, transform=transforms.ToTensor())
+    fmnist_val = DataLoader(fmnist_val, batch_size=32, num_workers=4,  pin_memory=True)
     # Train for an number of epoch 
     for epoch in range(nepoch):
       print(f"training Epoch: {epoch}")
@@ -765,6 +779,10 @@ if __name__ == "__main__":
 """## Open Analysis
 Same as TP 1 please write a short description of your experiment
 
+Comme dans le tp1 le nombre de couches va jouer sur la capactié du réseau à performer. Toutefois on utilise le momentum à présent ce qui nous permet d'aller bcp plus loin dans l'optimisation du réseau.
+
+Avec les parametres  minibatch_size = 25    nepoch = 20    learning_rate = 0.069    momentum = 0.098  je me retrouve dans la recherche d'un local donc ce n'est pas ce que je veux.
+
 # BONUS 
 
 Use some already trained CNN to segment YOUR image. 
@@ -777,7 +795,7 @@ if __name__ == "__main__" :
     # TODO HERE: Upload an image to the notebook in the navigation bar on the left
     # `File` `Load File`and load an image to the notebook. 
     
-    filename = "" 
+    filename = "/logosignature.jpg" 
     # Loading a already trained network in pytorch 
     model = torch.hub.load('pytorch/vision:v0.6.0', 'deeplabv3_resnet101', pretrained=True)
     model.eval()
@@ -802,4 +820,6 @@ if __name__ == "__main__" :
     with torch.no_grad():
         output = model(input_batch)['out'][0]
     output_predictions = output.argmax(0)
+
+print(output_predictions)
 
