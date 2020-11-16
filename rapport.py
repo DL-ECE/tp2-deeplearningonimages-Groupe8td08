@@ -278,7 +278,7 @@ class FFNN(nn.Module):
         # We use the built-in function to compute the loss
         # TODO: Maybe try with another loss function ! 
         #self.loss_function = torch.nn.MSELoss()
-        # self.loss_function = torch.nn.CrossEntropyLoss()
+        self.loss_function = torch.nn.CrossEntropyLoss()
 
         # We use the built-in function to update the model weights
         self.optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate, momentum=self.momentum)
@@ -491,12 +491,23 @@ print(K_1)
 """What is the result of convolution of $ I_0 \ast K_0 $"""
 
 # put your answer here
-R_0 = np.array([0,0])
+
+R_0 = np.array([[  0 , 0, 0 ,  0  , 0],
+                [252,  49, 113,  11, 137],
+                [ 18, 237, 163, 119,  53],
+                [ 90,  89, 178,  75, 247],
+                [209, 216,  48, 135, 232]])
+R_0
 
 """What is the result of convolution of $ I_0 \ast K_1 $"""
 
 # put your answer here
-R_1 = np.array([0,0])
+R_1 = np.array([[1005, -173,   46, -280,  513],
+       [ 212, 1242,  646,  356,   91],
+       [ 280,  390, 1010,  295, 1040],
+       [ 942, 1048,  316,  740, 1154],
+       [1570,  738,  934,  945, 1477]])
+R_1
 
 """## 2) Computation using __numpy__
 
@@ -505,12 +516,19 @@ Now using the numpy implement the convolution operation.
 
 def convolution_forward_numpy(image, kernel):
     # YOUR CODE HERE 
-    NotImplemented
+    from scipy.signal import convolve2d
+    x=image
+    y=kernel
+
+    return np.rot90(convolve2d(np.rot90(x, 3), np.rot90(y, 5),mode='same'), 5)
+    
+
+convolution_forward_numpy(I,K_0)
 
 """Test your implementation on the two previous example and compare the results to the result manually computed."""
 
-# assert convolution_forward_numpy(I, K_0) == R_0
-# assert convolution_forward_numpy(I, K_1) == R_1
+assert np.array_equal(convolution_forward_numpy(I, K_0), R_0)
+assert np.array_equal(convolution_forward_numpy(I, K_1),R_1)
 
 """Display the result image of the convolution"""
 
@@ -530,8 +548,13 @@ display_image(image)
 # Do the convolution operation and display the resulting image
 
 # YOUR CODE HERE
-# output_image = convolution_forward_numpy(image, kernel) 
-# display_image(output_image)
+output_image = np.zeros(image.shape)
+for i in range(image.shape[2]):
+  output_image[:,:,i] = convolution_forward_numpy(image[:,:,i], K_0)
+#display_image(output_image[:,:,0])
+#display_image(output_image[:,:,1])
+#display_image(output_image[:,:,2])
+display_image(output_image)
 
 """## 3) Computation using __pytorch__
 
@@ -540,11 +563,27 @@ Now let's use pytorch convolution layer to do the forward pass. Use the document
 
 def convolution_forward_torch(image, kernel):
     # YOUR CODE HERE 
-    NotImplemented
+    #filters = torch.Tensor(kernel)
+    #input = torch.Tensor(image)
+    #conv=nn.Conv2d(in_channels=1, out_channels=6, kernel_size=3)
+    Image = torch.Tensor(image.reshape(1,1,image.shape[1],image.shape[0]))
+    Kern = torch.Tensor(kernel.reshape(1,1,kernel.shape[1],kernel.shape[0]))
+    
+    m = F.conv2d(Image,Kern,padding=1,groups=1)
+
+    output = m.numpy().astype(int).reshape(Image.shape[2],Image.shape[3])
+    
+    
+    return output
+
+convolution_forward_torch(I,K_1)
 
 """In pytorch you can also access other layer like convolution2D, pooling layers, for example in the following cell use the __torch.nn.MaxPool2d__ to redduce the image size."""
 
+m = nn.MaxPool2d(3, stride=4)
+image_c=m(torch.Tensor(image))
 
+display_image(image_c[:,:,0])
 
 """# Part 2: Using convolution neural network to recognize digits
 
@@ -569,7 +608,13 @@ if __name__ == "__main__" :
 
 def display_10_images(dataset):
     # YOUR CODE HERE 
-    NotImplemented
+    for i in range(0,9):
+      image, target = dataset[i]
+      plot_one_tensor(image)
+      plt.show()
+
+#fmnist_train = FashionMNIST(os.getcwd(), train=True, download=True)
+display_10_images(fmnist_train)
 
 """What is the shape of each images
 How many images do we have
@@ -577,13 +622,17 @@ What are the different classes
 """
 
 def fashion_mnist_dataset_answer():
-    shape = None  # replace None with the value you found
-    number_of_images_in_train_set = None
-    number_of_images_in_test_set = None
-    number_of_classes = None
+    shape = [28,28]  # replace None with the value you found
+    number_of_images_in_train_set = 60000
+    number_of_images_in_test_set = 10000
+    number_of_classes = 10
     return {'shape': shape, 'nb_in_train_set': number_of_images_in_train_set, 'nb_in_test_set': number_of_images_in_test_set, 'number_of_classes': number_of_classes}
 
 # Plot an image and the target
+image, target = fmnist_train[5]
+
+plot_one_tensor(image)
+print(target)
 
 """## Create a convolutional neural network
 
@@ -612,13 +661,42 @@ class CNNModel(nn.Module):
     def __init__(self, classes=10):
         super().__init__()
         # YOUR CODE HERE 
-        self.conv1 = NotImplemented
+        
+        self.conv1 = torch.nn.Conv2d(1,16,kernel_size=3,padding = 1)
+        self.conv2 = torch.nn.Conv2d(16,64,kernel_size=3,padding = 1)
+        self.conv3 = torch.nn.Conv2d(64,32,kernel_size=3,padding = 1)
+
+        self.maxpool1 =  nn.MaxPool2d(2,2)
+
+        self.flaten = nn.Flatten()
+
+        #self.layer1 = nn.Sequential(self.conv1,self.flaten,maxpool1)
+        #self.layer2 = nn.Sequential(self.conv2,self.flaten,maxpool1)
+        #self.layer3 = nn.Sequential(self.conv3,self.flaten,maxpool1)
+
+        self.fc1 = nn.Linear(64, 10)
+        self.fc2 = nn.Linear(10, 15)
+        self.fc3 = nn.Linear(15,10)
+
+        self.last_activation = torch.nn.Softmax(dim=0)
+        
+
 
     def forward(self, input):
-        x = self.conv1(input)
-        # YOUR CODE HERE 
-        y = NotImplemented
-        return y
+      x = self.conv1(input)
+      y = self.conv2(x)
+      y = self.conv3(y)
+
+      y = self.maxpool1(y)
+      y = y.reshape(y.size(0),-1)
+      
+      y = self.fc1(y)
+      y= self.last_activation(y)
+      y = self.fc2(y)
+      y= self.last_activation(y)
+      y = self.fc3(y)
+      y= self.last_activation(y)
+      return y
 
 def train_one_epoch(model, device, data_loader, optimizer):
     train_loss = 0
@@ -629,7 +707,7 @@ def train_one_epoch(model, device, data_loader, optimizer):
         output = model(data)
 
         # YOUR CODE HERE 
-        loss = NotImplemented
+        loss = F.cross_entropy(output,target)
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -650,7 +728,7 @@ def evaluation(model, device, data_loader):
         data, target = data.to(device), target.to(device)
         output = model(data)
         # YOUR CODE HERE 
-        eval_loss = NotImplemented
+        eval_loss = F.cross_entropy(output,target)
         prediction = output.argmax(dim=1)
         correct += torch.sum(prediction.eq(target)).item()
     result = {'loss': eval_loss / len(data_loader.dataset),
@@ -662,13 +740,13 @@ if __name__ == "__main__":
     
     # Network Hyperparameters 
     # YOUR CODE HERE 
-    minibatch_size = NotImplemented
-    nepoch = NotImplemented
-    learning_rate = NotImplemented
-    momentum = NotImplemented
+    minibatch_size = 10
+    nepoch = 10
+    learning_rate = 0.06
+    momentum = 0.09
 
 
-    model = FFNNModel()
+    model = CNNModel()
     model.to(device)
 
     # YOUR CODE HERE 
@@ -678,10 +756,10 @@ if __name__ == "__main__":
     for epoch in range(nepoch):
       print(f"training Epoch: {epoch}")
       if epoch > 0:
-        train_result = train_one_epoch(model, device, mnist_train, optimizer)
+        train_result = train_one_epoch(model, device, fmnist_train, optimizer)
         print(f"Result Training dataset {train_result}")
 
-      eval_result = evaluation(model, device, mnist_val)
+      eval_result = evaluation(model, device, fmnist_val)
       print(f"Result Test dataset {eval_result}")
 
 """## Open Analysis
